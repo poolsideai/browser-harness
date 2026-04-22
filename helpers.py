@@ -44,6 +44,13 @@ def cdp(method, session_id=None, **params):
 
 
 def drain_events():  return _send({"meta": "drain_events"})["events"]
+def start_screencast(session_id=None, **params):
+    defaults = {"format": "png", "everyNthFrame": 1}
+    defaults.update(params)
+    return _send({"meta": "start_screencast", "session_id": session_id, "params": defaults})
+def stop_screencast(session_id=None):  return _send({"meta": "stop_screencast", "session_id": session_id})
+def drain_screencast_frames():  return _send({"meta": "drain_screencast_frames"})["frames"]
+def screencast_status():  return _send({"meta": "screencast_status"})
 
 
 # --- navigation / page ---

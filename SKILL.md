@@ -10,11 +10,7 @@ Direct browser control via CDP. Read helpers.py — that's where the functions l
 ## Usage
 
 ```bash
-browser-harness <<'PY'
-new_tab("https://docs.browser-use.com")
-wait_for_load()
-print(page_info())
-PY
+browser-harness -c 'new_tab("https://docs.browser-use.com"); wait_for_load(); print(page_info())'
 ```
 
 - Invoke as browser-harness — it's on $PATH. No cd, no uv run.
@@ -22,6 +18,7 @@ PY
 
 Available interaction skills:
 - interaction-skills/connection.md — startup sequence, tab visibility, omnibox popup fix
+- interaction-skills/recording.md — optional walkthrough recording for temporal flows, demos, and interaction sequences
 
 Available domain skills:
 - tiktok/upload.md
@@ -29,9 +26,7 @@ Available domain skills:
 ## Tool call shape
 
 ```bash
-browser-harness <<'PY'
-# any python. helpers pre-imported. daemon auto-starts.
-PY
+browser-harness -c 'print(page_info())'
 ```
 
 run.py calls ensure_daemon() before exec — you never start/stop manually unless you want to.
@@ -41,18 +36,20 @@ run.py calls ensure_daemon() before exec — you never start/stop manually unles
 Use remote for parallel sub-agents (each gets its own isolated browser via a distinct BU_NAME) or on a headless server. BROWSER_USE_API_KEY must be set. start_remote_daemon, list_cloud_profiles, list_local_profiles, sync_local_profile are pre-imported.
 
 ```bash
-browser-harness <<'PY'
+browser-harness -c "$(cat <<'PY'
 start_remote_daemon("work")                               # default — clean browser, no profile
 # start_remote_daemon("work", profileName="my-work")      # reuse a cloud profile (already logged in)
 # start_remote_daemon("work", profileId="<uuid>")         # same, but by UUID
 # start_remote_daemon("work", proxyCountryCode="de", timeout=120)   # DE proxy, 2-hour timeout
 # start_remote_daemon("work", proxyCountryCode=None)      # disable the Browser Use proxy
 PY
+)"
 
-BU_NAME=work browser-harness <<'PY'
+BU_NAME=work browser-harness -c "$(cat <<'PY'
 new_tab("https://example.com")
 print(page_info())
 PY
+)"
 ```
 
 start_remote_daemon prints liveUrl and auto-opens it in the local browser (if a GUI is detected) so the user can watch along. Headless servers print only — share the URL with the user. The daemon PATCHes the cloud browser to stop on shutdown, which persists profile state. Running remote daemons bill until timeout.
@@ -80,6 +77,7 @@ Only if you start struggling with a specific mechanic while navigating, look in 
 - tabs.md
 - uploads.md
 - viewport.md
+- recording.md
 
 Useful commands:
 
@@ -122,6 +120,7 @@ The *durable* shape of the site — the map, not the diary. Focus on what the ne
 ## What actually works
 
 - Screenshots first: use capture_screenshot() to understand the current page quickly, find visible targets, and decide whether you need a click, a selector, or more navigation.
+- Record only when the task needs temporal proof: motion, sequence, timing, or a demo flow. If you need that, read interaction-skills/recording.md first. This trigger intentionally duplicates the evidence-gathering policy trigger so agents can find the recorder from either browser mechanics or evidence planning.
 - Clicking: capture_screenshot() → read the pixel off the image → click_at_xy(x, y) → capture_screenshot() to verify. Suppress the Playwright-habit reflex of "locate first, then click" — no getBoundingClientRect, no selector hunt. Drop to DOM only when the target has no visible geometry (hidden input, 0×0 node). Hit-testing happens in Chrome's browser process, so clicks go through iframes / shadow DOM / cross-origin without extra work.
 - Bulk HTTP: http_get(url) + ThreadPoolExecutor. No browser for static pages (249 Netflix pages in 2.8s).
 - After goto: wait_for_load().
@@ -151,6 +150,7 @@ The *durable* shape of the site — the map, not the diary. Focus on what the ne
 - Stop cloud browsers with PATCH /browsers/{id} + {"action":"stop"}.
 - After every meaningful action, re-screenshot before assuming it worked. Use the image to verify changed state, open menus, navigation, visible errors, and whether the page is in the state you expected.
 - Use screenshots to drive exploration. They are often the fastest way to find the next click target, notice hidden blockers, and decide if a selector is even worth writing.
+- Recorder design axiom: no asynchronous background recording state the agent cannot inspect from the last command's return. The supported recording path is polling screenshots with Recorder, not CDP screencast state.
 - Prefer compositor-level actions over framework hacks. Try screenshots, coordinate clicks, and raw key input before adding DOM-specific workarounds.
 - If you need framework-specific DOM tricks, check interaction-skills/ first. That is where dropdown, dialog, iframe, shadow DOM, and form-specific guidance belongs.
 

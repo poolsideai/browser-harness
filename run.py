@@ -21,10 +21,7 @@ HELP = """Browser Harness
 Read SKILL.md for the default workflow and examples.
 
 Typical usage:
-  uv run bh <<'PY'
-  ensure_real_tab()
-  print(page_info())
-  PY
+  browser-harness -c 'ensure_real_tab(); print(page_info())'
 
 Helpers are pre-imported. The daemon auto-starts and connects to the running browser.
 

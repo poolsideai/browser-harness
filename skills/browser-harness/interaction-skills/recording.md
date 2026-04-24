@@ -1,0 +1,103 @@
+# Recording
+
+Screenshots are cheaper and sufficient for static proof. Record only when the
+thing being proven is temporal: a multi-step flow, motion, timing, an animation,
+or a demo where the reviewer needs to see the sequence.
+
+## Design Axiom
+
+Use polling only. The recorder must not rely on asynchronous browser-side state
+that the agent cannot inspect from the last command's return. Each frame is a
+bounded `capture_screenshot()` request, and the result is summarized in a JSON
+manifest beside the artifact.
+
+## Reviewer Versus Diagnostic Captures
+
+Reviewer-facing demos need a higher bar:
+
+- H.264 MP4 output
+- at least 8 fps
+- about 1280 px wide
+- under 30 seconds unnarrated
+- legible UI text
+- at least three distinct visible states
+
+Diagnostic captures can be lighter:
+
+- 3 fps is acceptable
+- a PNG sequence is acceptable if MP4 encoding is unavailable
+- the artifact only needs to preserve enough state to debug the failure
+
+## Basic Pattern
+
+Explore the page first. Do a dry run with screenshots and assertions before
+recording. When the flow is deterministic, wrap the same actions with
+`Recorder`.
+
+```python
+from pathlib import Path
+
+Path("/tmp/evidence").mkdir(parents=True, exist_ok=True)
+
+with Recorder("/tmp/evidence/walkthrough.mp4", fps=8, width=1280) as rec:
+    new_tab("http://localhost:3000")
+    wait_for_load()
+    wait(1)
+    rec.snap("loaded")
+
+    type_text("forge")
+    wait(1)
+    rec.snap("filtered")
+
+    # Keep the final state visible long enough to be legible.
+    wait(1)
+    rec.snap("final")
+
+manifest = rec.finish()
+print(manifest)
+```
+
+Use `rec.pause()` before false starts or setup clicks you do not want in the
+demo, and `rec.resume(capture=True)` once the page is ready again.
+
+Use `rec.beat(seconds)` to sample a short wait period, for example while a
+spinner resolves or an animation plays.
+
+## Acceptance
+
+Read the manifest after recording:
+
+```python
+print(manifest["ok"], manifest["reviewer_usable"], manifest.get("failure_reason"))
+print(manifest["artifact_path"])
+```
+
+If `frame_count < 3`, the recording failed. Do not present it as reviewer
+evidence even if a file exists.
+
+If `reviewer_usable` is false because the encoder fell back to a PNG sequence,
+use it only as diagnostic evidence unless the user explicitly accepts that
+format.
+
+## Actionable Retry Taxonomy
+
+- Selector or readiness timing: add a stronger wait/assertion, dry-run again,
+  then re-record.
+- Cookie banner or one-time modal: dismiss it, verify the clean state, then
+  re-record.
+- Expired auth: fix auth, verify the authenticated page with a screenshot, then
+  re-record.
+- CAPTCHA or login wall needing human credentials: stop and escalate.
+- Backend or recorder architecture failure: preserve artifacts and stop clearly;
+  do not loop on the same broken recording backend.
+
+## Interaction Footguns
+
+- Dialogs can pause the page's JS thread. Resolve the dialog before recording
+  the flow unless the dialog itself is the demo.
+- New tabs can detach or change the active CDP session. Call `page_info()` and
+  capture a screenshot after tab changes before continuing the recording.
+- Downloads produce separate browser events and filesystem artifacts. Record the
+  click if useful, but still attach the downloaded file or event evidence.
+- Auth/profile changes should be verified before recording. Do not record a
+  login wall unless the login wall is the behavior being demonstrated.

@@ -126,6 +126,9 @@ def capture_screenshot(path="/tmp/shot.png", full=False):
     return path
 
 
+from recording import Recorder
+
+
 # --- tabs ---
 def list_tabs(include_chrome=True):
     out = []

@@ -24,6 +24,14 @@ interactive verification, screenshots, or demos.
 browser-harness -c 'ensure_real_tab(); print(page_info())'
 ```
 
+Always pass Python code with `-c`. Do not run a saved file as
+`browser-harness /tmp/script.py`; that only prints usage. If you draft a longer
+script in a file, execute the file contents through `-c`:
+
+```bash
+browser-harness -c "$(cat /tmp/script.py)"
+```
+
 Helpers are pre-imported. Use `new_tab(url)` for first navigation so you do not
 clobber an existing tab. Use `capture_screenshot(path, full=False)` to inspect
 visible state and `click_at_xy(x, y)` for compositor-level clicks.

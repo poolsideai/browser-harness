@@ -34,6 +34,11 @@ Explore the page first. Do a dry run with screenshots and assertions before
 recording. When the flow is deterministic, wrap the same actions with
 `Recorder`.
 
+Browser-harness only executes code through `-c`. For longer recording scripts,
+it is fine to draft a file first, but run it as
+`browser-harness -c "$(cat /tmp/record_demo.py)"`, not
+`browser-harness /tmp/record_demo.py`.
+
 ```python
 from pathlib import Path
 

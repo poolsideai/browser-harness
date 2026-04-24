@@ -29,6 +29,14 @@ Available domain skills:
 browser-harness -c 'print(page_info())'
 ```
 
+Always pass Python code with `-c`. Do not run a saved file as
+`browser-harness /tmp/script.py`; that only prints usage. If you draft a longer
+script in a file, execute the file contents through `-c`:
+
+```bash
+browser-harness -c "$(cat /tmp/script.py)"
+```
+
 run.py calls ensure_daemon() before exec — you never start/stop manually unless you want to.
 
 ### Remote browsers

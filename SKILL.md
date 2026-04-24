@@ -132,17 +132,6 @@ The *durable* shape of the site — the map, not the diary. Focus on what the ne
 - Auth wall: redirected to login → stop and ask the user. Don't type credentials from screenshots.
 - Raw CDP for anything helpers don't cover: cdp("Domain.method", params).
 
-## Verification patterns
-
-Use browser-harness for browser work broadly, not just screenshots.
-
-- **Visual state**: `screenshot()` remains the fastest way to verify visible changes, routing, menus, modal state, and obvious layout issues.
-- **Browser/runtime state**: `page_info()`, `js(...)`, and targeted assertions are the right tools for URLs, titles, DOM presence, and state that a screenshot alone cannot prove.
-- **Network/runtime evidence**: `cdp("Network.enable")` plus `drain_events()` captures console/network-adjacent browser activity for later inspection.
-- **Downloads / exported files**: check `interaction-skills/downloads.md` and `interaction-skills/print-as-pdf.md` when the task is about generated files, browser downloads, or PDFs rather than page visuals.
-- **Advanced mechanics**: raw `cdp(...)` is the escape hatch for browser features that do not have a first-class helper yet.
-- **Walkthrough capture is experimental**: `start_screencast()`, `drain_screencast_frames()`, and `stop_screencast()` expose raw CDP screencast frames for short demo recordings, but this path is still experimental and should be validated in the target environment before relying on it for reviewer-facing artifacts.
-
 ## Design constraints
 
 - Coordinate clicks default. Input.dispatchMouseEvent goes through iframes/shadow/cross-origin at the compositor level.

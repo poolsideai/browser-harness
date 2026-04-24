@@ -25,7 +25,6 @@ SOCK = f"/tmp/bu-{NAME}.sock"
 LOG = f"/tmp/bu-{NAME}.log"
 PID = f"/tmp/bu-{NAME}.pid"
 BUF = 500
-SCREENCAST_BUF = 300
 PROFILES = [
     Path.home() / "Library/Application Support/Google/Chrome",
     Path.home() / "Library/Application Support/Microsoft Edge",
@@ -110,18 +109,8 @@ class Daemon:
         self.cdp = None
         self.session = None
         self.events = deque(maxlen=BUF)
-        self.screencast_frames = deque(maxlen=SCREENCAST_BUF)
-        self.screencast_active = False
-        self.screencast_session = None
-        self.screencast_ack_failures = 0
         self.dialog = None
         self.stop = None  # asyncio.Event, set inside start()
-
-    def _on_screencast_ack_done(self, task):
-        if task.cancelled():
-            return
-        if task.exception() is not None:
-            self.screencast_ack_failures += 1
 
     async def attach_first_page(self):
         """Attach to a real page (or any page). Sets self.session. Returns attached target or None."""
@@ -159,19 +148,6 @@ class Daemon:
         orig = self.cdp._event_registry.handle_event
         mark_js = "if(!document.title.startsWith('\U0001F7E2'))document.title='\U0001F7E2 '+document.title"
         async def tap(method, params, session_id=None):
-            if method == "Page.screencastFrame" and self.screencast_active:
-                self.screencast_frames.append({
-                    "params": params,
-                    "session_id": session_id,
-                    "captured_at": time.time(),
-                })
-                ack = asyncio.create_task(self.cdp.send_raw(
-                    "Page.screencastFrameAck",
-                    {"sessionId": params["sessionId"]},
-                    session_id=session_id,
-                ))
-                ack.add_done_callback(self._on_screencast_ack_done)
-                return await orig(method, params, session_id)
             self.events.append({"method": method, "params": params, "session_id": session_id})
             if method == "Page.javascriptDialogOpening":
                 self.dialog = params
@@ -188,32 +164,6 @@ class Daemon:
         if meta == "drain_events":
             out = list(self.events); self.events.clear()
             return {"events": out}
-        if meta == "start_screencast":
-            sid = req.get("session_id") or self.session
-            params = req.get("params") or {}
-            await self.cdp.send_raw("Page.startScreencast", params, session_id=sid)
-            self.screencast_active = True
-            self.screencast_session = sid
-            self.screencast_frames.clear()
-            self.screencast_ack_failures = 0
-            return {"ok": True, "session_id": sid}
-        if meta == "stop_screencast":
-            sid = req.get("session_id") or self.screencast_session or self.session
-            if self.screencast_active:
-                await self.cdp.send_raw("Page.stopScreencast", session_id=sid)
-            self.screencast_active = False
-            self.screencast_session = None
-            return {"ok": True, "session_id": sid}
-        if meta == "drain_screencast_frames":
-            out = list(self.screencast_frames); self.screencast_frames.clear()
-            return {"frames": out}
-        if meta == "screencast_status":
-            return {
-                "active": self.screencast_active,
-                "session_id": self.screencast_session,
-                "queued_frames": len(self.screencast_frames),
-                "ack_failures": self.screencast_ack_failures,
-            }
         if meta == "session":     return {"session_id": self.session}
         if meta == "set_session":
             self.session = req.get("session_id")
@@ -223,15 +173,7 @@ class Daemon:
             except Exception: pass
             return {"session_id": self.session}
         if meta == "pending_dialog": return {"dialog": self.dialog}
-        if meta == "shutdown":
-            if self.screencast_active:
-                try:
-                    await self.cdp.send_raw("Page.stopScreencast", session_id=self.screencast_session or self.session)
-                except Exception:
-                    pass
-                self.screencast_active = False
-                self.screencast_session = None
-            self.stop.set(); return {"ok": True}
+        if meta == "shutdown":    self.stop.set(); return {"ok": True}
 
         method = req["method"]
         params = req.get("params") or {}

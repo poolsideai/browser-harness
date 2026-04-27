@@ -22,6 +22,7 @@ class Recorder:
         fps=8,
         width=1280,
         max_seconds=30,
+        min_seconds=2.0,
         min_frames=3,
         frame_dir=None,
         screenshot_func=None,
@@ -30,6 +31,7 @@ class Recorder:
         self.fps = fps
         self.width = width
         self.max_seconds = max_seconds
+        self.min_seconds = min_seconds
         self.min_frames = min_frames
         self.frame_dir = Path(frame_dir) if frame_dir else self.out.with_suffix("").parent / f"{self.out.with_suffix('').name}_frames"
         self.manifest_path = Path(f"{self.out}.json")
@@ -162,11 +164,12 @@ class Recorder:
             "width": self.width,
             "duration_seconds": round(encoded_duration, 3),
             "wall_duration_seconds": round(wall_duration, 3),
+            "min_seconds": self.min_seconds,
             "started_at": self.started_at,
             "finished_at": self.finished_at,
             "frames": self.frames,
             "quality_bar": {
-                "reviewer_demo": "H.264 MP4, >=8 fps, about 1280 px wide, <30s, legible UI text, >=3 visible states",
+                "reviewer_demo": "H.264 MP4, >=8 fps, about 1280 px wide, 2-30s, legible UI text, >=3 visible states",
                 "diagnostic": "3 fps PNG sequence is acceptable when it preserves enough state to debug",
             },
         }
@@ -222,6 +225,7 @@ class Recorder:
             and manifest["distinct_frame_count"] >= self.min_frames
             and self.fps >= 8
             and self.width >= 1200
+            and manifest["duration_seconds"] >= self.min_seconds
             and manifest["duration_seconds"] <= 30
         )
 

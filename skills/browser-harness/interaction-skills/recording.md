@@ -18,7 +18,7 @@ Reviewer-facing demos need a higher bar:
 - H.264 MP4 output
 - at least 8 fps
 - about 1280 px wide
-- under 30 seconds unnarrated
+- 2-30 seconds unnarrated
 - legible UI text
 - at least three distinct visible states
 
@@ -92,10 +92,11 @@ If `distinct_frame_count < 3` or `duplicate_frame_count` shows most frames are
 the same, the recording failed. Do not present blank or repeated-frame videos as
 reviewer evidence.
 
-`duration_seconds` is the encoded artifact duration. `wall_duration_seconds` is
-how long the script spent between recorder start and finish. If the wall time is
-long but encoded duration is tiny, the script did not sample enough frames; add
-`rec.beat()` during waits or actions and dry-run again.
+`duration_seconds` is the encoded artifact duration and must be long enough to
+read. `wall_duration_seconds` is how long the script spent between recorder
+start and finish. If the wall time is long but encoded duration is tiny, the
+script did not sample enough frames; add `rec.beat()` during waits or actions
+and dry-run again.
 
 If `reviewer_usable` is false because the encoder fell back to a PNG sequence,
 use it only as diagnostic evidence unless the user explicitly accepts that

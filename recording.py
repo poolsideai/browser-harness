@@ -50,7 +50,7 @@ class Recorder:
         self.stop()
         return False
 
-    def start(self, capture=True):
+    def start(self, capture=False):
         self.out.parent.mkdir(parents=True, exist_ok=True)
         self.frame_dir.mkdir(parents=True, exist_ok=True)
         self.started_at = time.time()

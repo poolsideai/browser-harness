@@ -1,5 +1,6 @@
 """Polling-based walkthrough recording for browser-harness."""
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -79,7 +80,9 @@ class Recorder:
             return None
         path = self.frame_dir / f"frame_{len(self.frames):06d}.png"
         self._capture(path)
-        self.frames.append({"path": str(path), "at": time.time(), "label": label})
+        self.frames.append(
+            {"path": str(path), "at": time.time(), "label": label, **_file_fingerprint(path)}
+        )
         return str(path)
 
     def beat(self, seconds=1.0):
@@ -107,6 +110,15 @@ class Recorder:
             )
             return self._write_manifest(manifest)
 
+        if manifest["distinct_frame_count"] < self.min_frames:
+            manifest.update(
+                ok=False,
+                reviewer_usable=False,
+                failure_reason=f"too few distinct frames: {manifest['distinct_frame_count']} < {self.min_frames}",
+                fallback_artifact_path=str(self.frame_dir),
+            )
+            return self._write_manifest(manifest)
+
         encoder, artifact, error = self._encode()
         manifest.update(
             ok=artifact is not None,
@@ -131,9 +143,12 @@ class Recorder:
             capture(str(path))
 
     def _base_manifest(self):
-        duration = 0.0
+        wall_duration = 0.0
         if self.started_at:
-            duration = (self.finished_at or time.time()) - self.started_at
+            wall_duration = (self.finished_at or time.time()) - self.started_at
+        encoded_duration = len(self.frames) / max(float(self.fps), 0.1)
+        frame_hashes = [frame.get("sha256") for frame in self.frames if frame.get("sha256")]
+        distinct_frame_count = len(set(frame_hashes))
         return {
             "ok": False,
             "reviewer_usable": False,
@@ -141,9 +156,12 @@ class Recorder:
             "manifest_path": str(self.manifest_path),
             "frame_dir": str(self.frame_dir),
             "frame_count": len(self.frames),
+            "distinct_frame_count": distinct_frame_count,
+            "duplicate_frame_count": max(0, len(frame_hashes) - distinct_frame_count),
             "fps": self.fps,
             "width": self.width,
-            "duration_seconds": round(duration, 3),
+            "duration_seconds": round(encoded_duration, 3),
+            "wall_duration_seconds": round(wall_duration, 3),
             "started_at": self.started_at,
             "finished_at": self.finished_at,
             "frames": self.frames,
@@ -201,6 +219,7 @@ class Recorder:
             manifest.get("ok")
             and manifest.get("encoder") in {"ffmpeg", "imageio-ffmpeg"}
             and manifest["frame_count"] >= self.min_frames
+            and manifest["distinct_frame_count"] >= self.min_frames
             and self.fps >= 8
             and self.width >= 1200
             and manifest["duration_seconds"] <= 30
@@ -220,3 +239,11 @@ def _imageio_ffmpeg_exe():
         return imageio_ffmpeg.get_ffmpeg_exe()
     except Exception:
         return None
+
+
+def _file_fingerprint(path):
+    try:
+        data = Path(path).read_bytes()
+    except OSError:
+        return {"sha256": None, "bytes": None}
+    return {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}

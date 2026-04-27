@@ -34,6 +34,11 @@ Explore the page first. Do a dry run with screenshots and assertions before
 recording. When the flow is deterministic, wrap the same actions with
 `Recorder`.
 
+The dry run must prove the page is visually and semantically ready. Empty body
+text, a blank/white screenshot, unchanged screenshots, or missing expected DOM
+state means the dry run failed. Fix waits, auth, routing, or selectors before
+recording.
+
 Browser-harness only executes code through `-c`. For longer recording scripts,
 it is fine to draft a file first, but run it as
 `browser-harness -c "$(cat /tmp/record_demo.py)"`, not
@@ -65,8 +70,11 @@ print(manifest)
 Use `rec.pause()` before false starts or setup clicks you do not want in the
 demo, and `rec.resume(capture=True)` once the page is ready again.
 
-Use `rec.beat(seconds)` to sample a short wait period, for example while a
-spinner resolves or an animation plays.
+`Recorder` is polling-based, not a hidden background screen recorder. It only
+captures frames when you call `rec.snap()` or `rec.beat()`. A few sparse
+`snap()` calls produce a keyframe-style MP4, not a real-time recording. Use
+`rec.beat(seconds)` to sample a short wait period, for example while a spinner
+resolves, an animation plays, or a state should remain readable.
 
 ## Acceptance
 
@@ -79,6 +87,15 @@ print(manifest["artifact_path"])
 
 If `frame_count < 3`, the recording failed. Do not present it as reviewer
 evidence even if a file exists.
+
+If `distinct_frame_count < 3` or `duplicate_frame_count` shows most frames are
+the same, the recording failed. Do not present blank or repeated-frame videos as
+reviewer evidence.
+
+`duration_seconds` is the encoded artifact duration. `wall_duration_seconds` is
+how long the script spent between recorder start and finish. If the wall time is
+long but encoded duration is tiny, the script did not sample enough frames; add
+`rec.beat()` during waits or actions and dry-run again.
 
 If `reviewer_usable` is false because the encoder fell back to a PNG sequence,
 use it only as diagnostic evidence unless the user explicitly accepts that

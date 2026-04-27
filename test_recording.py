@@ -15,6 +15,17 @@ def _write_png(path, full=False):
     return path
 
 
+def _write_distinct_png():
+    counter = {"value": 0}
+
+    def write(path, full=False):
+        counter["value"] += 1
+        Path(path).write_bytes(PNG_BYTES + bytes([counter["value"]]))
+        return path
+
+    return write
+
+
 def test_recorder_fails_loudly_when_too_few_frames(tmp_path):
     rec = Recorder(
         out=tmp_path / "demo.mp4",
@@ -36,7 +47,7 @@ def test_recorder_keeps_diagnostic_png_sequence_without_encoder(tmp_path):
     rec = Recorder(
         out=tmp_path / "demo.mp4",
         min_frames=3,
-        screenshot_func=_write_png,
+        screenshot_func=_write_distinct_png(),
     )
 
     with patch("recording.shutil.which", return_value=None), patch("recording._imageio_ffmpeg_exe", return_value=None):
@@ -49,7 +60,29 @@ def test_recorder_keeps_diagnostic_png_sequence_without_encoder(tmp_path):
     assert manifest["ok"] is True
     assert manifest["encoder"] == "png-sequence"
     assert manifest["reviewer_usable"] is False
+    assert manifest["distinct_frame_count"] == 3
     assert Path(manifest["artifact_path"]).is_dir()
+
+
+def test_recorder_fails_loudly_when_frames_are_duplicates(tmp_path):
+    rec = Recorder(
+        out=tmp_path / "demo.mp4",
+        min_frames=3,
+        screenshot_func=_write_png,
+    )
+
+    rec.start(capture=False)
+    rec.snap("one")
+    rec.snap("two")
+    rec.snap("three")
+    manifest = rec.stop()
+
+    assert manifest["ok"] is False
+    assert manifest["frame_count"] == 3
+    assert manifest["distinct_frame_count"] == 1
+    assert manifest["duplicate_frame_count"] == 2
+    assert "too few distinct frames" in manifest["failure_reason"]
+    assert Path(manifest["fallback_artifact_path"]).is_dir()
 
 
 def test_pause_and_resume_skip_false_start_frames(tmp_path):

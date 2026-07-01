@@ -41,27 +41,6 @@ In Chrome:
 
 The checkbox and popup require the user.
 
-## Cloud Browsers
-
-Cloud is optional. Local Chrome does not need a Browser Use API key.
-
-Use any short made-up name; `r7k2` below is just a placeholder.
-
-```bash
-browser-harness auth login
-browser-harness <<'PY'
-start_remote_daemon("r7k2")
-PY
-```
-
-Then use it by name:
-
-```bash
-BU_NAME=r7k2 browser-harness <<'PY'
-print(page_info())
-PY
-```
-
 ## If Still Broken
 
 ```bash
@@ -70,7 +49,7 @@ browser-harness --doctor
 
 Use the output:
 
-- `chrome running` FAIL: ask the user to open Chrome, or use isolated/cloud browser.
+- `chrome running` FAIL: ask the user to open Chrome, or use an isolated local Chrome profile.
 - `daemon alive` FAIL: Chrome remote debugging permission is missing, Chrome is closed, or the CDP endpoint is not reachable.
 - update available: run `browser-harness --update -y` when you decide to upgrade.
 
@@ -80,7 +59,6 @@ Useful:
 
 ```bash
 browser-harness --update -y
-browser-harness telemetry disable
 ```
 
-State lives under `${XDG_CONFIG_HOME:-~/.config}/browser-harness` by default: auth, telemetry id, agent workspace, runtime sockets, logs, screenshots, and temp files. Override with `BH_HOME` or `BROWSER_HARNESS_HOME`.
+State lives under `${XDG_CONFIG_HOME:-~/.config}/browser-harness` by default: agent workspace, runtime sockets, logs, screenshots, and temp files. Override with `BH_HOME` or `BROWSER_HARNESS_HOME`.

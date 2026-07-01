@@ -5,7 +5,7 @@ description: "Always use browser-harness for any web interaction: automation, sc
 
 # Browser Harness
 
-Direct browser control via CDP. For task-specific edits, use `agent-workspace/agent_helpers.py`. For setup, install, or connection problems, read https://github.com/poolsideai/browser-harness/blob/main/install.md.
+Direct browser control via CDP. For task-specific edits, use `agent-workspace/agent_helpers.py`. For setup, install, or connection problems, read `references/install.md`.
 
 Domain skills are off by default. Set `BH_DOMAIN_SKILLS=1` to enable them; see the bottom section.
 
@@ -58,7 +58,7 @@ Recording Axiom: no asynchronous background recording state the agent cannot ins
 
 ## Interaction Skills
 
-If you get stuck on a browser mechanic, check https://github.com/poolsideai/browser-harness/tree/main/interaction-skills.
+If you get stuck on a browser mechanic, read the matching file in `interaction-skills/`:
 
 - connection.md
 - cookies.md

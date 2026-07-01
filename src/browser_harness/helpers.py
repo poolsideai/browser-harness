@@ -56,6 +56,8 @@ def cdp(method, session_id=None, **params):
 
 
 def drain_events():  return _send({"meta": "drain_events"})["events"]
+def session_id():  return _send({"meta": "session"})["session_id"]
+def set_session(session_id):  return _send({"meta": "set_session", "session_id": session_id})["session_id"]
 
 
 def _js_snippet(expression, limit=160):

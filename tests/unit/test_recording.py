@@ -2,7 +2,7 @@ import base64
 from pathlib import Path
 from unittest.mock import patch
 
-from recording import Recorder
+from browser_harness.recording import Recorder
 
 
 PNG_BYTES = base64.b64decode(
@@ -50,7 +50,7 @@ def test_recorder_keeps_diagnostic_png_sequence_without_encoder(tmp_path):
         screenshot_func=_write_distinct_png(),
     )
 
-    with patch("recording.shutil.which", return_value=None), patch("recording._imageio_ffmpeg_exe", return_value=None):
+    with patch("browser_harness.recording.shutil.which", return_value=None), patch("browser_harness.recording._imageio_ffmpeg_exe", return_value=None):
         rec.start(capture=False)
         rec.snap("one")
         rec.snap("two")
@@ -92,7 +92,7 @@ def test_pause_and_resume_skip_false_start_frames(tmp_path):
         screenshot_func=_write_png,
     )
 
-    with patch("recording.shutil.which", return_value=None), patch("recording._imageio_ffmpeg_exe", return_value=None):
+    with patch("browser_harness.recording.shutil.which", return_value=None), patch("browser_harness.recording._imageio_ffmpeg_exe", return_value=None):
         rec.start(capture=False)
         rec.pause()
         assert rec.snap("false-start") is None

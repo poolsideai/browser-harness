@@ -136,7 +136,7 @@ class Recorder:
     def _capture(self, path):
         capture = self.screenshot_func
         if capture is None:
-            from helpers import capture_screenshot
+            from .helpers import capture_screenshot
 
             capture = capture_screenshot
         try:

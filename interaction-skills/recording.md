@@ -34,10 +34,9 @@ Recording is a four-stage loop: **explore → dry-run → record → inspect**. 
 any stage and the recording usually fails or shows nothing useful. The example
 below maps 1:1 to the stages.
 
-Browser-harness only executes code through `-c`. For longer recording scripts,
-it is fine to draft a file first, but run it as
-`browser-harness -c "$(cat /tmp/record_demo.py)"`, not
-`browser-harness /tmp/record_demo.py`.
+Browser-harness reads scripts from stdin. For longer recording scripts, draft a
+file first and run it as `browser-harness < /tmp/record_demo.py`. For inline
+scripts, use a quoted heredoc delimiter.
 
 ### 1. Explore — figure out what the demo should show
 

@@ -9,6 +9,27 @@ from PIL import Image
 from browser_harness import helpers
 
 
+def test_session_helpers_wrap_ipc_send(monkeypatch):
+    calls = []
+
+    def fake_send(req):
+        calls.append(req)
+        if req.get("meta") == "session":
+            return {"session_id": "old-session"}
+        if req.get("meta") == "set_session":
+            return {"session_id": req["session_id"]}
+        raise AssertionError(req)
+
+    monkeypatch.setattr(helpers, "_send", fake_send)
+
+    assert helpers.session_id() == "old-session"
+    assert helpers.set_session("new-session") == "new-session"
+    assert calls == [
+        {"meta": "session"},
+        {"meta": "set_session", "session_id": "new-session"},
+    ]
+
+
 def _run(fake_png, width, height, **kwargs):
     fake = lambda method, **_: {"data": fake_png(width, height)}
     with patch("browser_harness.helpers.cdp", side_effect=fake), tempfile.TemporaryDirectory() as d:

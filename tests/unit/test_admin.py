@@ -243,13 +243,13 @@ def test_run_doctor_skips_snap_detect_on_non_linux(monkeypatch, capsys):
     assert "[snap-detect]" not in out
 
 
-def test_run_doctor_reports_bad_stored_cloud_auth_without_crashing(monkeypatch, capsys):
+def test_run_doctor_omits_cloud_auth_and_update_checks(monkeypatch, capsys):
     monkeypatch.setattr(admin, "_version", lambda: "0.1.0")
     monkeypatch.setattr(admin, "_install_mode", lambda: "git")
     monkeypatch.setattr(admin, "_chrome_running", lambda: True)
     monkeypatch.setattr(admin, "daemon_alive", lambda: True)
     monkeypatch.setattr(admin, "browser_connections", lambda: [])
-    monkeypatch.setattr(admin, "_latest_release_tag", lambda: "0.1.0")
+    monkeypatch.setattr(admin, "_latest_release_tag", lambda: (_ for _ in ()).throw(AssertionError("PyPI check should not run")))
     monkeypatch.setattr(admin, "_doctor_probe_chrome_binary_for_snap", lambda: (None, None))
     monkeypatch.setattr("platform.system", lambda: "Darwin")
     monkeypatch.setattr(admin.auth, "auth_status", lambda: (_ for _ in ()).throw(admin.auth.AuthError("auth file is not valid JSON")))
@@ -257,8 +257,9 @@ def test_run_doctor_reports_bad_stored_cloud_auth_without_crashing(monkeypatch, 
     assert admin.run_doctor() == 0
 
     out = capsys.readouterr().out
-    assert "Browser Use cloud auth" in out
-    assert "auth file is not valid JSON" in out
+    assert "Browser Use cloud auth" not in out
+    assert "auth file is not valid JSON" not in out
+    assert "latest release" not in out
 
 
 def test_run_doctor_fix_snap_prints_steps(capsys):

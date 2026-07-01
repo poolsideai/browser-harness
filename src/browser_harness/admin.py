@@ -786,15 +786,6 @@ def run_doctor():
     chrome = _chrome_running()
     daemon = daemon_alive()
     connections = browser_connections()
-    try:
-        auth_state = auth.auth_status()
-    except (auth.AuthError, OSError) as e:
-        auth_state = {"status": "error", "source": None, "reason": str(e)}
-    cloud_auth = auth_state.get("status") == "authenticated"
-    latest = _latest_release_tag()
-    # Only claim an update when we know the installed version — `cur or "(unknown)"`
-    # for display would otherwise be parsed as (0,) and flag every latest as newer.
-    newer = bool(cur and latest and _version_tuple(latest) > _version_tuple(cur))
     cur_display = cur or "(unknown)"
     doc_url = _snap_linux_headless_doc_url()
 
@@ -806,10 +797,6 @@ def run_doctor():
     print(f"  platform          {platform.system()} {platform.release()}")
     print(f"  python            {sys.version.split()[0]}")
     print(f"  version           {cur_display} ({mode})")
-    if latest:
-        print(f"  latest release    {latest}" + (" (update available)" if newer else ""))
-    else:
-        print("  latest release    (could not reach PyPI)")
     if platform.system() == "Linux":
         bname, bpath = _doctor_probe_chrome_binary_for_snap()
         if bname and bpath and _is_snap_browser(bpath):
@@ -828,8 +815,6 @@ def run_doctor():
             print(f"        {conn['name']} — active page: {title} — {url}")
         else:
             print(f"        {conn['name']} — active page: (no real page)")
-    row("Browser Use cloud auth", cloud_auth, auth_state.get("source") or auth_state.get("reason") or "optional: browser-harness auth login")
-    # Core health = chrome + daemon. Cloud auth is optional.
     return 0 if (chrome and daemon) else 1
 
 

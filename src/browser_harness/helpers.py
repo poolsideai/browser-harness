@@ -56,6 +56,8 @@ def cdp(method, session_id=None, **params):
 
 
 def drain_events():  return _send({"meta": "drain_events"})["events"]
+def session_id():  return _send({"meta": "session"})["session_id"]
+def set_session(session_id):  return _send({"meta": "set_session", "session_id": session_id})["session_id"]
 
 
 def _js_snippet(expression, limit=160):
@@ -471,16 +473,7 @@ def upload_file(selector, path):
     cdp("DOM.setFileInputFiles", files=[path] if isinstance(path, str) else list(path), nodeId=nid)
 
 def http_get(url, headers=None, timeout=20.0):
-    """Pure HTTP — no browser. Use for static pages / APIs. Wrap in ThreadPoolExecutor for bulk.
-
-    When BROWSER_USE_API_KEY is set, routes through the fetch-use proxy (handles bot
-    detection, residential proxies, retries). Falls back to local urllib otherwise."""
-    if os.environ.get("BROWSER_USE_API_KEY"):
-        try:
-            from fetch_use import fetch_sync
-            return fetch_sync(url, headers=headers, timeout_ms=int(timeout * 1000)).text
-        except ImportError:
-            pass
+    """Pure HTTP — no browser. Use for static pages / APIs. Wrap in ThreadPoolExecutor for bulk."""
     import gzip
     h = {"User-Agent": "Mozilla/5.0", "Accept-Encoding": "gzip"}
     if headers: h.update(headers)

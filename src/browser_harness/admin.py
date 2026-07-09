@@ -56,8 +56,8 @@ def _process_start_time(pid):
         return s or None
     if sys.platform == "win32":
         # Windows users running a remote daemon hit the same slow-shutdown
-        # window as POSIX (stop_remote() PATCHes api.browser-use.com after
-        # the IPC socket has been torn down). Without a fingerprint here the
+        # window as POSIX. The IPC socket can be torn down before shutdown completes;
+        # without a fingerprint here the
         # SIGTERM gate can never pass during that window, leaving an orphan
         # daemon that may continue to hold a billed cloud browser. Use
         # GetProcessTimes via ctypes to read the kernel-reported creation
@@ -180,23 +180,6 @@ def daemon_alive(name=None):
     # after a daemon crash doesn't make us mistake an unrelated listener for ours.
     return ipc.ping(name or NAME, timeout=1.0)
 
-
-def daemon_browser_kind(name=None):
-    """'cloud' | 'cdp' | 'local' as self-reported by a live daemon, else None.
-
-    None covers unreachable daemons and pre-browser_kind daemons still running
-    from an older version."""
-    c = None
-    try:
-        c, token = ipc.connect(name or NAME, timeout=1.0)
-        response = ipc.request(c, token, {"meta": "ping"})
-        kind = response.get("browser_kind") if isinstance(response, dict) else None
-        return kind if kind in {"cloud", "cdp", "local"} else None
-    except (FileNotFoundError, ConnectionRefusedError, TimeoutError, socket.timeout, OSError, ValueError):
-        return None
-    finally:
-        if c:
-            c.close()
 
 
 def _daemon_endpoint_names():
@@ -786,15 +769,6 @@ def run_doctor():
     chrome = _chrome_running()
     daemon = daemon_alive()
     connections = browser_connections()
-    try:
-        auth_state = auth.auth_status()
-    except (auth.AuthError, OSError) as e:
-        auth_state = {"status": "error", "source": None, "reason": str(e)}
-    cloud_auth = auth_state.get("status") == "authenticated"
-    latest = _latest_release_tag()
-    # Only claim an update when we know the installed version — `cur or "(unknown)"`
-    # for display would otherwise be parsed as (0,) and flag every latest as newer.
-    newer = bool(cur and latest and _version_tuple(latest) > _version_tuple(cur))
     cur_display = cur or "(unknown)"
     doc_url = _snap_linux_headless_doc_url()
 
@@ -806,10 +780,6 @@ def run_doctor():
     print(f"  platform          {platform.system()} {platform.release()}")
     print(f"  python            {sys.version.split()[0]}")
     print(f"  version           {cur_display} ({mode})")
-    if latest:
-        print(f"  latest release    {latest}" + (" (update available)" if newer else ""))
-    else:
-        print("  latest release    (could not reach PyPI)")
     if platform.system() == "Linux":
         bname, bpath = _doctor_probe_chrome_binary_for_snap()
         if bname and bpath and _is_snap_browser(bpath):
@@ -828,8 +798,6 @@ def run_doctor():
             print(f"        {conn['name']} — active page: {title} — {url}")
         else:
             print(f"        {conn['name']} — active page: (no real page)")
-    row("Browser Use cloud auth", cloud_auth, auth_state.get("source") or auth_state.get("reason") or "optional: browser-harness auth login")
-    # Core health = chrome + daemon. Cloud auth is optional.
     return 0 if (chrome and daemon) else 1
 
 

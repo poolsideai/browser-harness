@@ -32,7 +32,7 @@ If an old user-installed `browser` or `browser-use` skill is being picked instea
 
 ## Connect to a browser
 
-`browser-harness` attaches to a Chrome you already have running, or to a Browser Use cloud browser. Quick check:
+`browser-harness` attaches to a Chrome you already have running, or to an explicit local/remote CDP endpoint you provide with `BU_CDP_URL` or `BU_CDP_WS`. Quick check:
 
 ```bash
 browser-harness <<'PY'
@@ -49,6 +49,10 @@ If the quick path fails after `--doctor`, inspect `src/browser_harness/admin.py`
 
 ## Keeping current
 
-`browser-harness` prints an update banner when a newer PyPI release exists; run `browser-harness --update -y` when you decide to upgrade. `browser-harness --doctor` also checks the latest version. Telemetry is anonymous and opt-out with `browser-harness telemetry disable`.
+The normal runtime and `browser-harness --doctor` do not contact PyPI or automatically check for or announce updates. Run `browser-harness --update -y` when you decide to upgrade.
 
-State lives under `${XDG_CONFIG_HOME:-~/.config}/browser-harness` by default: auth, agent workspace, runtime sockets, logs, screenshots, and temp files. Override with `BH_HOME` or `BROWSER_HARNESS_HOME`.
+## Local-only policy
+
+Poolside hard-disables browser-harness telemetry and cloud auto-bootstrap. It forces `BH_TELEMETRY=0`, intentionally overriding a caller-set `BH_TELEMETRY=1`, and clears `BU_AUTOSPAWN`. This is a browser-harness process policy, not a global configuration of unrelated child tools; explicitly supplied `BU_CDP_URL` or `BU_CDP_WS` endpoints remain separate user choices.
+
+State lives under `${XDG_CONFIG_HOME:-~/.config}/browser-harness` by default: agent workspace, runtime sockets, logs, screenshots, and temp files. Override with `BH_HOME` or `BROWSER_HARNESS_HOME`.

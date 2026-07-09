@@ -1,1 +1,1 @@
-../../SKILL.md
+../../skills/browser-harness/SKILL.md

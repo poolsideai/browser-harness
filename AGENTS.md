@@ -10,7 +10,7 @@ browser-harness is a thin layer that connects agents to browsers via an editable
 Core code lives in `src/browser_harness/`:
 - `admin.py` — daemon lifecycle, diagnostics, updates, profile management
 - `daemon.py` — the long-lived middleman process between the browser and the agent
-- `helpers.py` — CDP wrapper and core browser primitives auto-imported into `-c` scripts
+- `helpers.py` — CDP wrapper and core browser primitives auto-imported into scripts read from standard input
 - `run.py` — the `browser-harness` CLI
 
 `SKILL.md` tells agents how to use the harness and CLI.

@@ -49,6 +49,10 @@ If the quick path fails after `--doctor`, inspect `src/browser_harness/admin.py`
 
 ## Keeping current
 
-Run `browser-harness --update -y` when you decide to upgrade. The fork disables telemetry and automatic update checks during normal browser work.
+The normal runtime and `browser-harness --doctor` do not contact PyPI or automatically check for or announce updates. Run `browser-harness --update -y` when you decide to upgrade.
+
+## Local-only policy
+
+Poolside hard-disables browser-harness telemetry and cloud auto-bootstrap. It forces `BH_TELEMETRY=0`, intentionally overriding a caller-set `BH_TELEMETRY=1`, and clears `BU_AUTOSPAWN`. This is a browser-harness process policy, not a global configuration of unrelated child tools; explicitly supplied `BU_CDP_URL` or `BU_CDP_WS` endpoints remain separate user choices.
 
 State lives under `${XDG_CONFIG_HOME:-~/.config}/browser-harness` by default: agent workspace, runtime sockets, logs, screenshots, and temp files. Override with `BH_HOME` or `BROWSER_HARNESS_HOME`.

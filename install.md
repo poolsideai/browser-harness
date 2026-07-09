@@ -51,14 +51,17 @@ Use the output:
 
 - `chrome running` FAIL: ask the user to open Chrome, or use an isolated local Chrome profile.
 - `daemon alive` FAIL: Chrome remote debugging permission is missing, Chrome is closed, or the CDP endpoint is not reachable.
-- update available: run `browser-harness --update -y` when you decide to upgrade.
 
 If this still fails, inspect `src/browser_harness/admin.py`, `src/browser_harness/daemon.py`, and `src/browser_harness/_ipc.py`.
 
-Useful:
+The normal runtime and `browser-harness --doctor` do not contact PyPI or automatically check for or announce updates. To upgrade when you choose:
 
 ```bash
 browser-harness --update -y
 ```
+
+## Local-only policy
+
+Poolside hard-disables browser-harness telemetry and cloud auto-bootstrap. It forces `BH_TELEMETRY=0`, intentionally overriding a caller-set `BH_TELEMETRY=1`, and clears `BU_AUTOSPAWN`. This is a browser-harness process policy, not a global configuration of unrelated child tools; explicitly supplied `BU_CDP_URL` or `BU_CDP_WS` endpoints remain separate user choices.
 
 State lives under `${XDG_CONFIG_HOME:-~/.config}/browser-harness` by default: agent workspace, runtime sockets, logs, screenshots, and temp files. Override with `BH_HOME` or `BROWSER_HARNESS_HOME`.

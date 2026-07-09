@@ -1,3 +1,5 @@
+import pytest
+
 from browser_harness import _ipc as ipc
 
 
@@ -126,3 +128,22 @@ def test_ping_returns_false_when_pong_field_is_missing_or_not_true(monkeypatch):
         assert ipc.ping("default", timeout=0.0) is False, (
             f"ping() should require pong is exactly True; got: {resp!r}"
         )
+
+# --- Windows port-file endpoint parsing ---
+
+def test_windows_port_file_decodes_utf8_endpoint_metadata(tmp_path, monkeypatch):
+    """A Windows daemon token is persisted as UTF-8 JSON so clients can reconnect."""
+    monkeypatch.setattr(ipc, "_RUNTIME", tmp_path)
+    port_file = ipc.port_path("unicode")
+    port_file.write_bytes(b'{"port":4321,"token":"tok-caf\xc3\xa9"}')
+
+    assert ipc._read_port_file("unicode") == (4321, "tok-café")
+
+
+@pytest.mark.parametrize("payload", [b'{"port":', b"\xff"])
+def test_windows_port_file_discards_corrupt_endpoint_metadata(tmp_path, monkeypatch, payload):
+    """Malformed endpoint metadata must not crash reconnect checks after a daemon failure."""
+    monkeypatch.setattr(ipc, "_RUNTIME", tmp_path)
+    ipc.port_path("corrupt").write_bytes(payload)
+
+    assert ipc._read_port_file("corrupt") == (None, None)

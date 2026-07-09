@@ -675,3 +675,59 @@ def test_process_start_time_returns_none_for_invalid_pid():
         )
     # 2**31 - 1 is the largest pid_t; in practice no live process at that PID.
     assert admin._process_start_time((1 << 31) - 1) is None
+
+# --- Update-cache degradation ---
+
+@pytest.mark.parametrize("cache_bytes", [b"{", b"\xff"])
+def test_update_check_treats_corrupt_version_cache_as_empty_when_offline(tmp_path, monkeypatch, cache_bytes):
+    """An unreadable cache cannot make `--update` fail when PyPI is unavailable."""
+    cache = tmp_path / "version-cache.json"
+    cache.write_bytes(cache_bytes)
+    monkeypatch.setattr(admin, "VERSION_CACHE", cache)
+
+    def offline(*_args, **_kwargs):
+        raise OSError("offline")
+
+    monkeypatch.setattr(admin.urllib.request, "urlopen", offline)
+
+    assert admin._latest_release_tag(force=True) is None
+
+
+def test_update_check_returns_live_release_when_version_cache_path_is_unreadable(tmp_path, monkeypatch):
+    """A permissions/filesystem failure in the cache must not hide a successful update check."""
+    cache_directory = tmp_path / "version-cache"
+    cache_directory.mkdir()
+    monkeypatch.setattr(admin, "VERSION_CACHE", cache_directory)
+
+    class _ReleaseResponse:
+        def read(self):
+            return b'{"info":{"version":"v1.2.3"}}'
+
+    monkeypatch.setattr(admin.urllib.request, "urlopen", lambda *_args, **_kwargs: _ReleaseResponse())
+
+    assert admin._latest_release_tag(force=True) == "1.2.3"
+
+
+# --- Daemon launch diagnostics ---
+
+def test_ensure_daemon_writes_child_stderr_to_daemon_log(tmp_path, monkeypatch):
+    """Daemon startup diagnostics must remain available after the child inherits stderr."""
+    daemon_log = tmp_path / "daemon.log"
+    alive = iter([False, True])
+
+    class _StartedProcess:
+        def poll(self):
+            return None
+
+    def fake_popen(_command, *, stderr, **_kwargs):
+        stderr.write("daemon startup: café\n".encode("utf-8"))
+        stderr.flush()
+        return _StartedProcess()
+
+    monkeypatch.setattr(admin, "daemon_alive", lambda _name: next(alive))
+    monkeypatch.setattr(admin.ipc, "log_path", lambda _name: daemon_log)
+    monkeypatch.setattr(admin.subprocess, "Popen", fake_popen)
+
+    admin.ensure_daemon(wait=0.01, name="diagnostic")
+
+    assert daemon_log.read_text(encoding="utf-8") == "daemon startup: café\n"

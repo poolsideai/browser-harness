@@ -371,3 +371,28 @@ def test_wait_for_network_idle_filters_events_to_active_session():
         "session filter, the background rWS/lF pair would have updated "
         "last_activity and prevented the idle window from elapsing."
     )
+
+# --- Environment file encoding ---
+
+def test_load_env_file_strips_utf8_bom_and_preserves_unicode_value(tmp_path, monkeypatch):
+    """A BOM-prefixed .env keeps its Unicode value and content after the first equals sign."""
+    key = "BH_RELIABILITY_BOM_VALUE"
+    env_file = tmp_path / ".env"
+    env_file.write_bytes(b"\xef\xbb\xbfBH_RELIABILITY_BOM_VALUE=caf\xc3\xa9=trusted\n")
+    monkeypatch.delenv(key, raising=False)
+
+    helpers._load_env_file(env_file)
+
+    assert os.environ[key] == "café=trusted"
+
+
+def test_load_env_file_replaces_invalid_utf8_bytes_in_value(tmp_path, monkeypatch):
+    """One corrupt byte in a .env file must not prevent later startup configuration."""
+    key = "BH_RELIABILITY_REPLACED_VALUE"
+    env_file = tmp_path / ".env"
+    env_file.write_bytes(b"BH_RELIABILITY_REPLACED_VALUE=good\xffvalue\n")
+    monkeypatch.delenv(key, raising=False)
+
+    helpers._load_env_file(env_file)
+
+    assert os.environ[key] == "good\ufffdvalue"

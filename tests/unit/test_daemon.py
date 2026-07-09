@@ -1,5 +1,7 @@
 import asyncio
 
+import pytest
+
 from browser_harness import daemon
 
 
@@ -293,3 +295,32 @@ def test_current_tab_meta_returns_not_attached_when_no_target_id():
     assert result == {"error": "not_attached"}
     # No CDP call should have been issued.
     assert d.cdp.calls == []
+
+# --- Platform profile discovery ---
+
+def test_profile_dirs_windows_honors_localappdata_for_chrome_channels(tmp_path, monkeypatch):
+    """Windows discovery must scan Chrome release, Canary, Beta, and Dev under LOCALAPPDATA."""
+    local_app_data = tmp_path / "LocalAppData"
+    monkeypatch.setenv("LOCALAPPDATA", str(local_app_data))
+
+    assert daemon.profile_dirs("Windows")[:4] == [
+        local_app_data / "Google/Chrome/User Data",
+        local_app_data / "Google/Chrome SxS/User Data",
+        local_app_data / "Google/Chrome Beta/User Data",
+        local_app_data / "Google/Chrome Dev/User Data",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("system", "relative_root"),
+    [
+        ("Darwin", "Library/Application Support/Google/Chrome"),
+        ("Linux", ".config/google-chrome"),
+    ],
+)
+def test_profile_dirs_selects_the_requested_platform_root(tmp_path, monkeypatch, system, relative_root):
+    """Explicit platform selection must not fall through to another OS profile layout."""
+    home = tmp_path / "home"
+    monkeypatch.setattr(daemon.Path, "home", classmethod(lambda _cls: home))
+
+    assert daemon.profile_dirs(system)[0] == home / relative_root

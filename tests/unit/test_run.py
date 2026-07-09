@@ -1,4 +1,7 @@
+import os
+import subprocess
 import sys
+from pathlib import Path
 from io import StringIO
 from unittest.mock import patch
 
@@ -107,3 +110,40 @@ def test_cli_doctor_rejects_unknown_flags():
             run.main()
     assert ei.value.code == 2
     assert "usage" in err.getvalue().lower()
+
+def test_runtime_reconfigures_stdout_and_stderr_to_utf8_in_isolated_process():
+    """Unicode diagnostics must survive an ASCII inherited stream configuration."""
+    repo_src = Path(__file__).resolve().parents[2] / "src"
+    env = {
+        **os.environ,
+        "PYTHONIOENCODING": "ascii",
+        "PYTHONPATH": str(repo_src),
+    }
+    script = (
+        "import sys\n"
+        "from browser_harness import run\n"
+        "sys.stdout.write('stdout: café\\n')\n"
+        "sys.stderr.write('stderr: naïve\\n')\n"
+    )
+
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        env=env,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr.decode("utf-8", errors="replace")
+    assert completed.stdout == b"stdout: caf\xc3\xa9\n"
+    assert completed.stderr == b"stderr: na\xc3\xafve\n"
+
+
+def test_skill_command_emits_packaged_utf8_content(capsys):
+    """`browser-harness skill` emits the bundled package resource without byte drift."""
+    from importlib import resources
+
+    expected = resources.files("browser_harness").joinpath("SKILL.md").read_bytes().decode("utf-8")
+    with patch.object(sys, "argv", ["browser-harness", "skill"]):
+        run.main()
+
+    assert capsys.readouterr().out == expected

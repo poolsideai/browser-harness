@@ -1,11 +1,13 @@
 import os, sys
 
-# Windows default stdout encoding is cp1252, which can't encode the 🐴 marker
-# helpers prepend to tab titles (or anything else outside Latin-1). Force UTF-8
-# so `print(page_info())` doesn't UnicodeEncodeError on Windows. Issue #124(4).
-if hasattr(sys.stdout, "reconfigure"):
-    try: sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    except Exception: pass
+# Windows default stdout/stderr encodings can be locale-specific and unable to
+# encode tab-title markers or tracebacks. Force UTF-8 for both streams.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
 
 from .admin import (
     _version,
@@ -50,7 +52,7 @@ USAGE = """Usage:
 
 def _print_skill():
     from importlib import resources
-    print(resources.files("browser_harness").joinpath("SKILL.md").read_text(), end="")
+    print(resources.files("browser_harness").joinpath("SKILL.md").read_text(encoding="utf-8"), end="")
 
 
 def main():

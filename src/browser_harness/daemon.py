@@ -5,7 +5,6 @@ from collections import deque
 from pathlib import Path
 
 from . import _ipc as ipc
-from . import auth
 from . import paths
 from cdp_use.client import CDPClient
 
@@ -85,9 +84,6 @@ def profile_dirs(system=None):
 
 PROFILES = profile_dirs()
 INTERNAL = ("chrome://", "chrome-untrusted://", "devtools://", "chrome-extension://", "about:")
-BU_API = "https://api.browser-use.com/api/v3"
-REMOTE_ID = os.environ.get("BU_BROWSER_ID")
-BROWSER_KIND = "cloud" if REMOTE_ID else ("cdp" if (os.environ.get("BU_CDP_WS") or os.environ.get("BU_CDP_URL")) else "local")
 
 
 def log(msg):
@@ -188,21 +184,6 @@ def get_ws_url():
     raise RuntimeError(f"DevToolsActivePort not found in {[str(p) for p in PROFILES]} — enable chrome://inspect/#remote-debugging, or set BU_CDP_WS for a remote browser")
 
 
-def stop_remote():
-    if not REMOTE_ID:
-        return
-    try:
-        key = auth.get_browser_use_api_key()
-        req = urllib.request.Request(
-            f"{BU_API}/browsers/{REMOTE_ID}",
-            data=json.dumps({"action": "stop"}).encode(),
-            method="PATCH",
-            headers={"X-Browser-Use-API-Key": key, "Content-Type": "application/json"},
-        )
-        urllib.request.urlopen(req, timeout=15).read()
-        log(f"stopped remote browser {REMOTE_ID}")
-    except Exception as e:
-        log(f"stop_remote failed ({REMOTE_ID}): {e}")
 
 
 def is_real_page(t):
@@ -300,7 +281,7 @@ class Daemon:
         # daemon and not an unrelated process that reused our port post-crash.
         # `pid` lets restart_daemon() verify the live daemon's identity before
         # signaling — protects against SIGTERM-by-stale-pid-file after PID reuse.
-        if meta == "ping":        return {"pong": True, "pid": os.getpid(), "browser_kind": BROWSER_KIND}
+        if meta == "ping":        return {"pong": True, "pid": os.getpid()}
         if meta == "drain_events":
             out = list(self.events); self.events.clear()
             return {"events": out}
@@ -407,7 +388,7 @@ async def serve(d):
     serve_task = asyncio.create_task(ipc.serve(NAME, handler))
     stop_task = asyncio.create_task(d.stop.wait())
     await asyncio.sleep(0.05)  # let serve() bind so sock_addr() resolves to the live endpoint
-    log(f"listening on {ipc.sock_addr(NAME)} (name={NAME}, remote={REMOTE_ID or 'local'})")
+    log(f"listening on {ipc.sock_addr(NAME)} (name={NAME})")
     try:
         await asyncio.wait({serve_task, stop_task}, return_when=asyncio.FIRST_COMPLETED)
         if serve_task.done(): await serve_task  # surfaces a serve crash
@@ -445,6 +426,5 @@ if __name__ == "__main__":
         log(f"fatal: {e}")
         sys.exit(1)
     finally:
-        stop_remote()
         try: os.unlink(PID)
         except FileNotFoundError: pass

@@ -1,4 +1,5 @@
 import asyncio
+import urllib.error
 
 import pytest
 
@@ -324,3 +325,21 @@ def test_profile_dirs_selects_the_requested_platform_root(tmp_path, monkeypatch,
     monkeypatch.setattr(daemon.Path, "home", classmethod(lambda _cls: home))
 
     assert daemon.profile_dirs(system)[0] == home / relative_root
+
+
+def test_explicit_cdp_url_recovers_devtools_endpoint_with_malformed_utf8_tail(tmp_path, monkeypatch):
+    profile = tmp_path / "profile"
+    profile.mkdir()
+    (profile / "DevToolsActivePort").write_bytes(
+        b"9229\n/devtools/browser/healthy-session\n\xff"
+    )
+    monkeypatch.delenv("BU_CDP_WS", raising=False)
+    monkeypatch.setenv("BU_CDP_URL", "http://127.0.0.1:9229")
+    monkeypatch.setattr(daemon, "PROFILES", [profile])
+
+    def json_version_is_disabled(url, *args, **kwargs):
+        raise urllib.error.HTTPError(str(url), 404, "Not Found", hdrs=None, fp=None)
+
+    monkeypatch.setattr(daemon.urllib.request, "urlopen", json_version_is_disabled)
+
+    assert daemon.get_ws_url() == "ws://127.0.0.1:9229/devtools/browser/healthy-session"

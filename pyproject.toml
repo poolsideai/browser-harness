@@ -24,7 +24,7 @@ classifiers = [
 dependencies = [
     "cdp-use==1.4.5",
     "imageio-ffmpeg>=0.5.1",
-    "pillow==12.2.0",
+    "pillow==12.3.0",
     "websockets==15.0.1",
 ]
 
